@@ -27,13 +27,14 @@ const type_to_rounds_left = {
 
 var size = Vector2(224, 176)
 
-var level_ind = 3
+# --- Progression : 3 niveaux FIGHT puis 1 BOSS ---
+var level_ind = 0
 const types = [
 	Globals.Level.FIGHT, 
 	Globals.Level.FIGHT, 
 	Globals.Level.FIGHT, 
 	Globals.Level.BOSS
-	]
+]
 
 const unit_data = {
 	"ai_red": preload("res://resources/units/ai_red.tres"),
@@ -70,8 +71,12 @@ func _process(delta: float) -> void:
 		fighting = false
 		if rounds_left <= 1:
 			yield(get_tree().create_timer(1), "timeout")
-			update_level_type()
-			spawn_portal()
+			# Si le niveau actuel est le boss et qu'il est terminé, on gagne le jeu
+			if type == Globals.Level.BOSS:
+				win_game()
+			else:
+				update_level_type()
+				spawn_portal()
 		else:
 			load_round()
 			fighting = true
@@ -118,15 +123,17 @@ func message(gpos, text, color):
 	msg.color = color
 	spawn(msg)
 
+# --- Mise à jour de la progression des niveaux ---
 func update_level_type():
 	level_ind += 1
-	if level_ind == len(types):
-		world += 1
-		# $BG/Floor.color = bg_colors[world]
-		Signals.emit_signal("world_changed", world)
-		level_ind = 0
-	type = types[level_ind]
+	if level_ind < types.size():
+		type = types[level_ind]
+		rounds_left = type_to_rounds_left[type]
+	else:
+		# Normalement, la victoire devrait être déclenchée dans _process dès que le boss est terminé.
+		pass
 
+# --- Réinitialisation du niveau (inclut le tutoriel) ---
 func reset_level(to_start=true):
 	reset = false
 	fighting = false
@@ -137,11 +144,12 @@ func reset_level(to_start=true):
 	Globals.unit_data = new_data
 	
 	if to_start:
-		type = Globals.Level.FIGHT
-		world = -1
+		# Lancement depuis le tutoriel
+		type = types[0]           # Premier niveau classique
+		world = 0                 # On garde un seul monde
 		fname = "tutorial"
-		level_ind = 3
-		rounds_left = 1
+		level_ind = 0
+		rounds_left = type_to_rounds_left[type]
 	
 		$BG/TutorialIcons.visible = true
 		for child in $Spawns.get_children():
@@ -212,31 +220,29 @@ func win_game():
 	yield(get_tree().create_timer(1), "timeout")
 	spawn_unit(Vector2(320, 240) / 2, preload("res://resources/units/friend.tres"))
 
+# --- Modification de spawn_portal : on ne dépend plus de "world" ---
 func spawn_portal():
-	if world > 2:
+	# Si le niveau actuel est le boss, on déclenche la victoire
+	if type == Globals.Level.BOSS:
 		win_game()
 		return
-	if level_ind % len(types) == 0:
+		
+	if level_ind == 0:
 		if player and is_instance_valid(player):
 			player.hp = player.data.max_hp
 			spawn_custom_portal("fight!")
-#			Signals.emit_signal("fade_music")
 		return
 		
 	player.hp += 1
 	
-	if level_ind == len(types) - 1:
-		spawn_custom_portal("?")
-#		Signals.emit_signal("fade_music")
-		return
-	
+	# Pour les niveaux classiques, on propose des portails d'upgrade
 	for i in range(2):
 		var portal = portal_scene.instance()
 		portal.upgrade = i == 0
 		$Spawns.add_child(portal)
 		portal.position = Vector2(size.x * i + 40 * (1 - 2 * i), size.y / 2)
 		yield(get_tree().create_timer(3), "timeout")
-	
+
 func get_save_dir():
 	return "res://resources/levels/" + Globals.level_name(type) + "/" + str(world)
 
@@ -275,42 +281,46 @@ func serialize():
 	ResourceSaver.save(get_save_path(), save)
 
 func deserialize(flip_h=false, flip_v=false):
-	var save = ResourceLoader.load(get_save_path()).data
-	
-	for child in $Units.get_children():
-		child.queue_free()
-	
-	yield(get_tree(), "idle_frame")
-	
-	var drop_delay = 1
-	var units = []
-	
-	for info in save["units"]:
-		var unit
-		if "fname" in info:
-			unit = load(info["fname"]).instance()
-		else:
-			unit = unit_scene.instance()
-		
-		for key in info:
-			if key == "data_name":
-				unit.data = Globals.unit_data[info[key]]
-			elif key == "data" or key == "fname":
-				pass
-			else:
-				unit.set(key, info[key])
-		if flip_h:
-			unit.position.x = size.x - unit.position.x
-		if flip_v:
-			unit.position.y = size.y - unit.position.y
-		
-		if "drop_delay" in unit:
-			unit.drop_delay = drop_delay
-			drop_delay += 0.2
-		units.append(unit)
-	
-	for unit in units:
-		if "start_delay" in unit:
-			unit.start_delay = drop_delay + 0.2
-		$Units.add_child(unit)
-		unit.set_owner(get_tree().get_edited_scene_root())
+    var resource = ResourceLoader.load(get_save_path())
+    if resource == null:
+        print("Aucun fichier de sauvegarde trouvé à : ", get_save_path())
+        return  # On arrête la méthode si le fichier n'existe pas
+    var save = resource.data
+    
+    for child in $Units.get_children():
+        child.queue_free()
+    
+    yield(get_tree(), "idle_frame")
+    
+    var drop_delay = 1
+    var units = []
+    
+    for info in save["units"]:
+        var unit
+        if "fname" in info:
+            unit = load(info["fname"]).instance()
+        else:
+            unit = unit_scene.instance()
+        
+        for key in info:
+            if key == "data_name":
+                unit.data = Globals.unit_data[info[key]]
+            elif key == "data" or key == "fname":
+                pass
+            else:
+                unit.set(key, info[key])
+        if flip_h:
+            unit.position.x = size.x - unit.position.x
+        if flip_v:
+            unit.position.y = size.y - unit.position.y
+        
+        if "drop_delay" in unit:
+            unit.drop_delay = drop_delay
+            drop_delay += 0.2
+        units.append(unit)
+    
+    for unit in units:
+        if "start_delay" in unit:
+            unit.start_delay = drop_delay + 0.2
+        $Units.add_child(unit)
+        unit.set_owner(get_tree().get_edited_scene_root())
