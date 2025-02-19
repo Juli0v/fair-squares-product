@@ -190,6 +190,11 @@ const magic_scene = preload("res://scenes/boss/boss_orbit_bullet.tscn")
 var magic_angle = 0
 
 func ai_ready():
+	# Si en mode tutoriel, ne lance pas l'IA
+	if Globals.tutorial_mode:
+		drop_in(drop_delay, start_delay)
+		return
+	# Sinon, comportement IA classique
 	if data.kisses:
 		Signals.emit_signal("end_fight")
 	drop_in(drop_delay, start_delay)
