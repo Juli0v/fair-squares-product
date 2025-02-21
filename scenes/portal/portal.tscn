@@ -198,7 +198,7 @@ margin_bottom = -24.217
 theme = ExtResource( 3 )
 custom_colors/font_color = Color( 0.65098, 0.521569, 0.623529, 1 )
 custom_colors/font_color_shadow = Color( 0.121569, 0.0627451, 0.164706, 1 )
-text = "i'm good"
+text = "Next Level"
 align = 1
 valign = 1
 

@@ -24,11 +24,26 @@ var enemy_up_text = ""
 var just_died = false
 
 func _ready() -> void:
-	visible = false
-	Signals.connect("wipe_on_completed", self, "next")
-	Signals.connect("upgraded", self, "on_upgraded")
-	Signals.connect("player_died", self, "on_player_died")
-	Signals.connect("game_won", self, "on_game_won")
+    visible = false
+    Signals.connect("wipe_on_completed", self, "next")
+    Signals.connect("upgraded", self, "on_upgraded")
+    Signals.connect("player_died", self, "on_player_died")
+    Signals.connect("game_won", self, "on_game_won")
+    Signals.connect("update_enemy_icon", self, "_on_update_enemy_icon")
+
+func _on_update_enemy_icon(enemy_type):
+	match enemy_type:
+		"ai_red":
+			$EnemyIcon/Sprite.texture = preload("res://assets/unit_orange.png")
+		"ai_green":
+			$EnemyIcon/Sprite.texture = preload("res://assets/unit_green.png")
+		"ai_pink":
+			$EnemyIcon/Sprite.texture = preload("res://assets/unit_pink.png")
+		"boss":
+			$EnemyIcon/Sprite.texture = preload("res://assets/boss_final.png")
+		_:
+			$EnemyIcon/Sprite.texture = preload("res://assets/unit_icon.png")
+
 
 func on_player_died(gpos):
 	$DeathText.text = "all is square in love and war..."

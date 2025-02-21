@@ -11,6 +11,8 @@ var player
 var gun
 var world = 0
 
+var tutorial_mode = false
+
 func _ready() -> void:
 	Signals.connect("world_changed", self, "world_changed")
 
