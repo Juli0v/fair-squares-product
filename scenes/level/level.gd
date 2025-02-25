@@ -14,7 +14,6 @@ const portal_scene = preload("res://scenes/portal/portal.tscn")
 const gun_scene = preload("res://scenes/gun/gun.tscn")
 
 const bg_colors = [Color("390947"), Color("09471a")]
-
 const player_data = preload("res://resources/units/player.tres")
 
 var fighting = false
@@ -35,7 +34,7 @@ const unit_data = {
 	"ai_red": preload("res://resources/units/ai_red.tres"),
 	"ai_green": preload("res://resources/units/ai_green.tres"),
 	"ai_pink": preload("res://resources/units/ai_pink.tres"),
-	"boss": preload("res://resources/levels/BOSS/0/saw.tres")
+	"boss": preload("res://resources/levels/BOSS/2/final.tres")
 }
 
 onready var player = get_node_or_null("Player")
@@ -52,12 +51,24 @@ func _ready() -> void:
 	Signals.connect("wipe_on_completed", self, "on_wipe_on_completed")
 	Signals.connect("world_ui_completed", self, "load_level")
 	Signals.connect("player_died", self, "on_player_died")
-	Signals.connect("game_won", self, "on_player_died")
-	
+	Signals.connect("game_won", self, "win_game")  # <--- Modification ici
+	     
 	Signals.emit_signal("world_changed", world)
 	reset_level(true)
 
 func _process(delta):
+	# Pour le boss, si aucun nœud "BossFinal" n'est trouvé (c'est-à-dire que le boss est mort),
+	# on spawn le portail.
+	if fighting and !portal_spawned and current_enemy_type == "boss":
+		if get_node_or_null("BossFinal") != null:
+			# Le boss est encore vivant, on ne fait rien
+			return
+		else:
+			portal_spawned = true
+			spawn_portal()
+			return
+	
+	# Pour les autres vagues :
 	if fighting and not portal_spawned:
 		var enemy_exists = false
 		for unit in $Units.get_children():
@@ -86,6 +97,8 @@ func _process(delta):
 func on_player_died(gpos):
 	reset = true
 	Signals.emit_signal("wipe_on", gpos, 1)
+	yield(get_tree().create_timer(1), "timeout")
+	#defeat_game()  # <--- Appel de la fonction de défaite
 
 func on_wipe_on_completed():
 	for unit in $Units.get_children():
@@ -191,10 +204,11 @@ func spawn_tutorial_wave():
 
 func spawn_wave():
 	if current_enemy_type == "boss":
-		# Instancier le boss directement dans la scène en cours
-		var boss_scene = preload("res://scenes/boss/boss_saw.tscn")
+		# Instancier le boss directement dans la scène en cours avec un décalage pour éviter le contact immédiat.
+		var boss_scene = preload("res://scenes/boss/boss_final.tscn")
 		var boss_instance = boss_scene.instance()
-		boss_instance.position = size / 2
+		# Position modifiée : le boss spawn en haut (par exemple, 30 pixels du haut) plutôt que pile au centre.
+		boss_instance.position = Vector2(size.x / 2, 30)
 		add_child(boss_instance)
 		return
 	var num_enemies = current_wave + 2
@@ -206,6 +220,7 @@ func spawn_wave():
 func update_level_type():
 	level_ind += 1
 	if level_ind >= enemy_order.size():
+		# Lorsque le boss est vaincu, on passe à la victoire.
 		win_game()
 		return
 	current_enemy_type = enemy_order[level_ind]
@@ -223,6 +238,7 @@ func update_level_type():
 
 func spawn_portal():
 	var portal = portal_scene.instance()
+	# Pour le boss, le portail n'apparaît qu'après la mort du boss.
 	if current_enemy_type == "boss":
 		portal.custom_text = "Boss Fight!"
 	else:
@@ -238,19 +254,22 @@ func spawn_custom_portal(text):
 	var ind = world % len(Globals.world_to_color)
 	portal.custom_color = Globals.world_to_color[ind]
 	$Spawns.add_child(portal)
-	portal.position = size / 2
+	portal.position = Vector2(size.x / 2, size.y / 2)
 	portal.connect("portal_entered", self, "on_portal_entered")
 	return portal
 
 func on_portal_entered():
 	portal_spawned = false
-	load_level()
+	if current_enemy_type == "boss":
+		# Pour le boss, on déclenche la cinématique de victoire via la méthode kiss() du joueur.
+		if Globals.player and Globals.player.has_method("kiss"):
+			Globals.player.kiss()
+		else:
+			win_game()
+	else:
+		load_level()
 
 func win_game():
 	Signals.emit_signal("stop_music", true)
-	yield(get_tree(), "idle_frame")
 	yield(get_tree().create_timer(1), "timeout")
-	Signals.emit_signal("message", Vector2(160,120), "Victory!", Globals.green)
-	yield(get_tree().create_timer(2), "timeout")
-	get_tree().change_scene("res://scenes/tutorial.tscn")
-
+	spawn_unit(Vector2(320, 240) / 2, preload("res://resources/units/friend.tres"))
