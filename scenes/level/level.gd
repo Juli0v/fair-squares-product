@@ -35,7 +35,7 @@ const unit_data = {
 	"ai_red": preload("res://resources/units/ai_red.tres"),
 	"ai_green": preload("res://resources/units/ai_green.tres"),
 	"ai_pink": preload("res://resources/units/ai_pink.tres"),
-	"boss": preload("res://resources/levels/BOSS/2/final.tres")
+	"boss": preload("res://resources/levels/BOSS/0/saw.tres")
 }
 
 onready var player = get_node_or_null("Player")
@@ -192,7 +192,7 @@ func spawn_tutorial_wave():
 func spawn_wave():
 	if current_enemy_type == "boss":
 		# Instancier le boss directement dans la scène en cours
-		var boss_scene = preload("res://scenes/boss/boss_final.tscn")
+		var boss_scene = preload("res://scenes/boss/boss_saw.tscn")
 		var boss_instance = boss_scene.instance()
 		boss_instance.position = size / 2
 		add_child(boss_instance)
