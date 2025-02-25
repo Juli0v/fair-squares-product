@@ -1,6 +1,5 @@
 tool extends Node2D
 
-# Vous pouvez ajuster ces positions dans l'éditeur pour qu'elles correspondent exactement à la version initiale du tutoriel.
 export (Vector2) var tutorial_spawn_pos1 = Vector2(40, 40)
 export (Vector2) var tutorial_spawn_pos2 = Vector2(184, 136)
 
@@ -24,17 +23,13 @@ const type_to_rounds_left = { Globals.Level.FIGHT: 3, Globals.Level.BOSS: 1 }
 
 var size = Vector2(224, 176)
 
-# Progression en combat (après tutoriel)
-# Niveau 1 : ai_red, Niveau 2 : ai_green, Niveau 3 : ai_pink, puis boss.
 var enemy_order = ["ai_red", "ai_green", "ai_pink", "boss"]
 var level_ind = 0
 var current_enemy_type = enemy_order[level_ind]
 
-# Pour les niveaux non-boss, 3 vagues par niveau avec (current_wave + 2) unités (vague 1:2, vague 2:3, vague 3:4)
 var waves_per_level = 3
 var current_wave = 0
 
-# Ressources des ennemis (le boss est chargé depuis la ressource initiale)
 const unit_data = {
 	"ai_grey": preload("res://resources/units/ai_grey.tres"),
 	"ai_red": preload("res://resources/units/ai_red.tres"),
@@ -48,7 +43,7 @@ var reset = false
 var portal_spawned = false
 
 func _ready() -> void:
-	Globals.tutorial_mode = true  # On démarre en mode tutoriel
+	Globals.tutorial_mode = true
 	Signals.connect("spawn", self, "spawn")
 	Signals.connect("spawn_unit", self, "spawn_unit")
 	Signals.connect("blast", self, "blast")
@@ -145,7 +140,6 @@ func reset_level(to_start=true):
 			$BG/TutorialIcons.visible = true
 		else:
 			$BG/TutorialIcons.visible = false
-			# Démarrage du mode combat, niveau 1 = ai_red
 			level_ind = 0
 			current_enemy_type = enemy_order[level_ind]
 			type = Globals.Level.FIGHT
@@ -186,11 +180,8 @@ func load_level():
 		update_level_type()
 
 func spawn_tutorial_wave():
-	# Reprenez ici la version du tutoriel qui fonctionnait bien dans la version initiale.
-	# Les positions exportées devraient correspondre aux positions du fichier source initial.
 	spawn_unit(tutorial_spawn_pos1, Globals.unit_data["ai_grey"].duplicate(true))
 	spawn_unit(tutorial_spawn_pos2, Globals.unit_data["ai_grey"].duplicate(true))
-	# Forcer leur immobilité
 	for unit in $Units.get_children():
 		if not unit.data.player:
 			unit.data.dashes = false
@@ -200,8 +191,11 @@ func spawn_tutorial_wave():
 
 func spawn_wave():
 	if current_enemy_type == "boss":
-		# Pour le boss, on utilise la méthode initiale qui change de scène.
-		get_tree().change_scene("res://scenes/boss/boss_final.tscn")
+		# Instancier le boss directement dans la scène en cours
+		var boss_scene = preload("res://scenes/boss/boss_final.tscn")
+		var boss_instance = boss_scene.instance()
+		boss_instance.position = size / 2
+		add_child(boss_instance)
 		return
 	var num_enemies = current_wave + 2
 	var margin = 50
