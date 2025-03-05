@@ -35,6 +35,7 @@ config/icon="res://icon.png"
 Signals="*res://scripts/signals.gd"
 Globals="*res://scripts/globals.gd"
 Upgrades="*res://scripts/upgrades.gd"
+EventManager="*res://scripts/event_manager.gd"
 
 [display]
 

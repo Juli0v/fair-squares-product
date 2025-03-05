@@ -19,21 +19,27 @@ func _on_Timer_timeout() -> void:
 	die()
 
 func _on_Bullet_body_entered(body: Node) -> void:
-	if "data" in body and body.data.player == player:
-		return
-	
-	if body.has_method("knock"):
-		body.knock(Vector2.RIGHT.rotated(rotation), 1.5)
-	
-	if "hp" in body:
-		if body.hp > 0:
-			body.hp -= dmg
-		Signals.emit_signal("bullet_hit")
-		if piercing:
-			return
-			
-	blast_dir = -Vector2.RIGHT.rotated(rotation)
-	die()
+    if "data" in body and body.data.player == player:
+        return
+
+    if body.has_method("knock"):
+        body.knock(Vector2.RIGHT.rotated(rotation), 1.5)
+
+    if "hp" in body:
+        if body.hp > 0:
+            body.hp -= dmg
+        # Envoi de l'événement "bullet_hit" avec quelques métadonnées
+        EventManager.send_event("bullet_hit", {
+            "position": $Sprite.global_position,
+            "blast_direction": -Vector2.RIGHT.rotated(rotation),
+            "damage": dmg,
+            "piercing": piercing
+        })
+        if piercing:
+            return
+
+    blast_dir = -Vector2.RIGHT.rotated(rotation)
+    die()
 
 
 func _on_Wall_body_entered(body):
